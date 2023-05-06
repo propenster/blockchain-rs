@@ -2,9 +2,18 @@
 extern crate serde_derive;
 extern crate chrono;
 mod blockchain;
+mod shredder;
 use blockchain::*;
+
+
+
 fn main() {
     println!("Welcome to P2P Rust Blockchain experiment");
+
+    println!("Running the Shredder function now...");
+    shredder::shred().unwrap();
+    //println!("{:?}", processed_file);
+
 }
 
 #[cfg(test)]
