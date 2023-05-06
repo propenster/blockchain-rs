@@ -1,7 +1,7 @@
 use threadpool::ThreadPool;
 use std::error::Error;
 use std::sync::mpsc::channel;
-use std::thread;
+use std::{thread, fs};
 use csv;
 use glob::glob;
 
@@ -26,7 +26,7 @@ impl ProcessFile{
 
 //This is how I would parse over 74GB of CSV that has over 19Million rows in just 3 seconds...
 //Faith - propenster say so...
-pub fn shred() -> Result<(), Box<dyn Error>>{
+pub fn shred() -> Result<ProcessFile, Box<dyn Error>>{
     let (tx, rx) = channel();
 
     //prepare the worker pool
@@ -41,20 +41,22 @@ pub fn shred() -> Result<(), Box<dyn Error>>{
         pool.execute(move || {
             {
                 let path = path.display().to_string();
+                let metadata = fs::metadata(&path).unwrap();
 
                 //generate csv reader here... or whatever you want to do... this is bad...
-                let mut reader = csv::Reader::from_path(path).unwrap();
+                let mut reader = csv::Reader::from_path(&path).unwrap();
 
                 let mut total = 0;
                 let count = reader.records().into_iter().inspect(|_| total += 1).flat_map(|line| line).filter(|line| {
                     line[5].to_string() == "1"
                 }).count();
 
+
                 //sender sends
                 tx.send(ProcessFile{
                     total_lines: total,
                     is_member_total: count,
-                    total_size: 1000000
+                    total_size: metadata.len()
                 }).unwrap();
 
 
@@ -65,6 +67,10 @@ pub fn shred() -> Result<(), Box<dyn Error>>{
     //print....
     let mut process_file = ProcessFile::default();
 
+    //drop sender manually...after sending to mpsc
+    //to ensure that only senders in spawned threads are still in use
+    drop(tx);
+
     rx.into_iter().for_each(|line| {
         //println!("{:?}", line);
         process_file.total_lines += line.total_lines;
@@ -72,9 +78,7 @@ pub fn shred() -> Result<(), Box<dyn Error>>{
         process_file.total_size += line.total_size;
     });
 
-    println!("{:?}", process_file);
-
-    Ok(())
+    Ok(process_file)
 
 
 

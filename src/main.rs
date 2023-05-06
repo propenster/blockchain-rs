@@ -6,13 +6,18 @@ mod shredder;
 use blockchain::*;
 
 
+use stopwatch::{Stopwatch};
+
 
 fn main() {
     println!("Welcome to P2P Rust Blockchain experiment");
 
     println!("Running the Shredder function now...");
-    shredder::shred().unwrap();
-    //println!("{:?}", processed_file);
+
+    let sw = Stopwatch::start_new();
+    let process_file = shredder::shred().unwrap();
+    println!("{:?}", process_file);
+    println!("Processing 74GB CSVs took {}ms", sw.elapsed_ms()) //this took 2032ms
 
 }
 
